@@ -86,10 +86,14 @@ RouteSpec {
 }
 ```
 
-**Default expected status:** unset (`ExpectStatus == 0`) means **expect 200 or
-3xx, never 5xx**. Authors only set `ExpectStatus` where the route's correct
-response is not the obvious class. This keeps boring GETs annotation-free while
-still asserting the route is wired.
+**Default expected status:** unset (`ExpectStatus == 0`) means **anything but
+5xx**. A black-box probe of a real route surface legitimately hits 4xx — auth
+gates (401/403), method gates (405), missing optional params (400/404); all mean
+the handler ran and responded. Only a 5xx is the failure class this catches (the
+panic/wiring/DI regression, e.g. the treasure 502). Set `ExpectStatus` per route
+where a specific code matters (e.g. a public page must be 200). (Revised from the
+original "200/3xx only" after the first live run showed 4xx is normal and
+pervasive for unauthenticated probes of auth/method-gated routes.)
 
 **Effect class** decides what is safe against live:
 - `ReadOnly` — safe against live production (default for GET/HEAD).

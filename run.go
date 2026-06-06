@@ -226,7 +226,7 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 		if route.ExpectStatus != 0 {
 			res.Reason = fmt.Sprintf("status %d, want %d", resp.StatusCode, route.ExpectStatus)
 		} else {
-			res.Reason = fmt.Sprintf("status %d, want 2xx/3xx", resp.StatusCode)
+			res.Reason = fmt.Sprintf("status %d (5xx)", resp.StatusCode)
 		}
 		return res
 	}
@@ -234,13 +234,18 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 	return res
 }
 
-// statusOK applies the expectation: exact match when expect is set, else the
-// default class (200..399, never 4xx/5xx).
+// statusOK applies the expectation: an exact match when ExpectStatus is set,
+// else "anything but 5xx". A black-box probe of a real route surface hits
+// plenty of legitimate 4xx — auth gates (401/403), method gates (405), missing
+// optional params (400/404) — all of which mean the handler ran and responded.
+// Only a 5xx is the failure class this catches (the panic/wiring/DI regression,
+// e.g. a 502 from a nil-deref). Assert an exact status per route (smoke.Status)
+// where a specific code actually matters (e.g. a public page must be 200).
 func statusOK(status, expect int) bool {
 	if expect != 0 {
 		return status == expect
 	}
-	return status >= 200 && status < 400
+	return status < 500
 }
 
 func trimTrailingSlash(s string) string {

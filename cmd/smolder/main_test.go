@@ -49,19 +49,22 @@ func TestRun(t *testing.T) {
 			w.WriteHeader(200)
 		case "/redir":
 			http.Redirect(w, r, "/ok", http.StatusFound)
+		case "/boom":
+			w.WriteHeader(500)
 		default:
-			w.WriteHeader(404)
+			w.WriteHeader(404) // a 4xx is not a failure (default expectation is "not 5xx")
 		}
 	}))
 	defer srv.Close()
 
+	// A 404 (default route) is acceptable — the default expectation is "no 5xx".
 	good := writeManifest(t, completeManifest)
 	if err := runCmd([]string{"--base", srv.URL, "--manifest", good}); err != nil {
 		t.Errorf("run against healthy server should pass: %v", err)
 	}
 
-	bad := writeManifest(t, `{"routes":[{"method":"GET","pattern":"/missing","effect":"read_only","complete":true}]}`)
+	bad := writeManifest(t, `{"routes":[{"method":"GET","pattern":"/boom","effect":"read_only","complete":true}]}`)
 	if err := runCmd([]string{"--base", srv.URL, "--manifest", bad}); err == nil {
-		t.Errorf("run should fail when a route 404s")
+		t.Errorf("run should fail when a route 5xxs")
 	}
 }
