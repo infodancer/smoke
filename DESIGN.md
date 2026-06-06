@@ -1,11 +1,13 @@
 # smoke / smolder — black-box route smoke testing
 
-Status: **approved design, not yet implemented** (2026-06-05)
+Status: **implemented and extracted** (designed 2026-06-05). Built and proven
+against a real ~160-route surface in old-school-gamers/org, then extracted to
+this module. This document is the design rationale and data model — for usage,
+start with the [README](README.md).
 Owner: Matthew Hunter
 
-This document records the design agreed for a black-box HTTP smoke-testing
-system, so the decisions survive the gap before implementation. It is the
-source of truth for the build; update it when the design changes.
+It records the design decisions and the reasoning behind them (including the
+host-incubation history in §11), so they survive rather than being re-derived.
 
 ---
 
