@@ -62,6 +62,11 @@ type RouteSpec struct {
 	// body. ContentType sets its Content-Type header.
 	RequestBody string `json:"request_body,omitempty"`
 	ContentType string `json:"content_type,omitempty"`
+	// AuthRequired marks a route that only responds successfully to an
+	// authenticated request. It is skipped in an unauthenticated run (no
+	// Cookie) and probed — expecting the default 2xx/3xx — only when a
+	// credential is supplied. Use for reads that 401/404 without a session.
+	AuthRequired bool `json:"auth_required,omitempty"`
 }
 
 // Option mutates a RouteSpec at registration time.
@@ -99,6 +104,10 @@ func SafeForLive() Option { return func(s *RouteSpec) { s.Effect = ReadOnly } }
 
 // Skip exempts the route from probing and the gate, recording why.
 func Skip(reason string) Option { return func(s *RouteSpec) { s.Skip = reason } }
+
+// AuthRequired marks a read route that needs a session: skipped without a
+// credential, probed (expecting 2xx/3xx) when one is supplied.
+func AuthRequired() Option { return func(s *RouteSpec) { s.AuthRequired = true } }
 
 // Body attaches a request body and content type for probing a write route.
 // Unlike Write(), it does not skip the route — the route is probed (POSTed)

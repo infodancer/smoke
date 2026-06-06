@@ -268,3 +268,29 @@ func findRoute(t *testing.T, routes []smoke.ManifestRoute, pattern string) smoke
 	t.Fatalf("route %q not found", pattern)
 	return smoke.ManifestRoute{}
 }
+
+func TestAuthRequiredGating(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Cookie") == "" {
+			w.WriteHeader(401) // unauthenticated
+			return
+		}
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+
+	reg := smoke.New()
+	reg.AddPattern("GET /api/me", smoke.AuthRequired())
+	m := reg.Manifest()
+
+	// No credential: the auth-required route is skipped, not failed on the 401.
+	rep, _ := smoke.Run(context.Background(), m, smoke.RunOptions{BaseURL: srv.URL})
+	if _, fail, skip := rep.Counts(); fail != 0 || skip != 1 {
+		t.Errorf("unauth run: fail=%d skip=%d, want 0/1; %+v", fail, skip, rep.Results)
+	}
+	// With a credential: probed and expected to succeed (2xx/3xx).
+	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{BaseURL: srv.URL, Cookie: "s=1"})
+	if pass, _, _ := rep.Counts(); pass != 1 {
+		t.Errorf("authed run: pass=%d, want 1; %+v", pass, rep.Results)
+	}
+}

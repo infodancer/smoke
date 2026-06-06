@@ -52,12 +52,12 @@ func TestRun(t *testing.T) {
 		case "/boom":
 			w.WriteHeader(500)
 		default:
-			w.WriteHeader(404) // a 4xx is not a failure (default expectation is "not 5xx")
+			w.WriteHeader(404)
 		}
 	}))
 	defer srv.Close()
 
-	// A 404 (default route) is acceptable — the default expectation is "no 5xx".
+	// good manifest probes only /ok (200) and /redir (302) — both 2xx/3xx.
 	good := writeManifest(t, completeManifest)
 	if err := runCmd([]string{"--base", srv.URL, "--manifest", good}); err != nil {
 		t.Errorf("run against healthy server should pass: %v", err)

@@ -26,6 +26,7 @@ type ManifestRoute struct {
 	Skip          string            `json:"skip,omitempty"`
 	RequestBody   string            `json:"request_body,omitempty"`
 	ContentType   string            `json:"content_type,omitempty"`
+	AuthRequired  bool              `json:"auth_required,omitempty"`
 	Complete      bool              `json:"complete"`
 }
 
@@ -47,6 +48,7 @@ func toManifestRoute(s RouteSpec) ManifestRoute {
 		Skip:          s.Skip,
 		RequestBody:   s.RequestBody,
 		ContentType:   s.ContentType,
+		AuthRequired:  s.AuthRequired,
 		Complete:      s.Complete(),
 	}
 }
@@ -63,6 +65,7 @@ func (r ManifestRoute) Spec() RouteSpec {
 		Skip:          r.Skip,
 		RequestBody:   r.RequestBody,
 		ContentType:   r.ContentType,
+		AuthRequired:  r.AuthRequired,
 	}
 }
 

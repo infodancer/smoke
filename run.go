@@ -179,6 +179,10 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 		res.Outcome, res.Reason = Skipped, "skip: "+route.Skip
 		return res
 	}
+	if route.AuthRequired && opts.Cookie == "" {
+		res.Outcome, res.Reason = Skipped, "auth-required: no credential (probed only in the authenticated pass)"
+		return res
+	}
 	if mutating && (opts.Target == Live || !opts.IncludeWrites) {
 		res.Outcome, res.Reason = Skipped, "mutating route skipped (reads-only run)"
 		return res
@@ -226,7 +230,7 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 		if route.ExpectStatus != 0 {
 			res.Reason = fmt.Sprintf("status %d, want %d", resp.StatusCode, route.ExpectStatus)
 		} else {
-			res.Reason = fmt.Sprintf("status %d (5xx)", resp.StatusCode)
+			res.Reason = fmt.Sprintf("status %d, want 2xx/3xx", resp.StatusCode)
 		}
 		return res
 	}
@@ -235,17 +239,18 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 }
 
 // statusOK applies the expectation: an exact match when ExpectStatus is set,
-// else "anything but 5xx". A black-box probe of a real route surface hits
-// plenty of legitimate 4xx — auth gates (401/403), method gates (405), missing
-// optional params (400/404) — all of which mean the handler ran and responded.
-// Only a 5xx is the failure class this catches (the panic/wiring/DI regression,
-// e.g. a 502 from a nil-deref). Assert an exact status per route (smoke.Status)
-// where a specific code actually matters (e.g. a public page must be 200).
+// else 2xx/3xx (served, or a redirect). Anything else — including 4xx — is a
+// failure by default: a 4xx on a route we deliberately probe means we did not
+// reach what we meant to test (a 404 is a dead route or a bad example; a 401/403
+// is an ungated probe of a gated route; a 405/400 is the wrong method or missing
+// input). Those cases are made explicit instead: smoke.Status for an asserted
+// code (e.g. an admin route's 403), AuthRequired for routes probed only with a
+// session, or Skip with a reason. So nothing 4xx passes silently.
 func statusOK(status, expect int) bool {
 	if expect != 0 {
 		return status == expect
 	}
-	return status < 500
+	return status >= 200 && status < 400
 }
 
 func trimTrailingSlash(s string) string {
