@@ -222,7 +222,7 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 		res.Outcome, res.Reason = Fail, "request: "+err.Error()
 		return res
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	res.Status = resp.StatusCode
 
 	if !statusOK(resp.StatusCode, route.ExpectStatus) {

@@ -176,7 +176,7 @@ func loadManifest(src string) (smoke.Manifest, error) {
 		if err != nil {
 			return smoke.Manifest{}, fmt.Errorf("fetch manifest %s: %w", src, err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode != http.StatusOK {
 			return smoke.Manifest{}, fmt.Errorf("fetch manifest %s: status %d", src, resp.StatusCode)
 		}
