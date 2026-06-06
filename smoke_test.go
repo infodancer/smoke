@@ -191,11 +191,13 @@ func TestRunAgainstServer(t *testing.T) {
 }
 
 func TestRunWriteProbing(t *testing.T) {
-	var gotCookie, gotBody, gotCT string
+	var gotCookie, gotBody, gotCT, gotOrigin, gotHost string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" && r.URL.Path == "/api/write" {
 			gotCookie = r.Header.Get("Cookie")
 			gotCT = r.Header.Get("Content-Type")
+			gotOrigin = r.Header.Get("Origin")
+			gotHost = r.Host
 			b, _ := io.ReadAll(r.Body)
 			gotBody = string(b)
 			w.WriteHeader(200)
@@ -230,6 +232,10 @@ func TestRunWriteProbing(t *testing.T) {
 	}
 	if gotCT != "application/json" {
 		t.Errorf("content-type = %q", gotCT)
+	}
+	// Same-origin header sent and matching Host, so a CSRF origin check passes.
+	if gotOrigin == "" || gotOrigin != "http://"+gotHost {
+		t.Errorf("Origin = %q, want http://%s (same-origin for CSRF)", gotOrigin, gotHost)
 	}
 
 	// Live target never probes a mutating route, even with IncludeWrites.

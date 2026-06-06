@@ -200,6 +200,11 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 		return res
 	}
 	req.Header.Set("User-Agent", ua)
+	// Same-origin header so the request passes a host's CSRF origin check on
+	// write probes (a server that compares Origin/Referer host to its own Host).
+	// Harmless on safe methods. Derived from the base so it matches whatever
+	// host we're actually probing (in-network container or public domain).
+	req.Header.Set("Origin", base)
 	if route.ContentType != "" {
 		req.Header.Set("Content-Type", route.ContentType)
 	}
