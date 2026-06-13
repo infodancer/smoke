@@ -4,8 +4,8 @@
 // smolder CLI (cmd/smolder) is the consumer that probes a running server and
 // runs the gate.
 //
-// The package imports nothing from any host application — hosts depend on
-// smoke, never the reverse — so it can be lifted to its own repo
+// The package imports nothing from any host application -- hosts depend on
+// smoke, never the reverse -- so it can be lifted to its own repo
 // (github.com/infodancer/smoke) once the API stabilizes. See DESIGN.md.
 package smoke
 
@@ -44,13 +44,13 @@ type RouteSpec struct {
 	// was registered without one (matches any method); the runner treats it as
 	// GET.
 	Method string `json:"method"`
-	// Pattern is the path pattern, Go 1.22 ServeMux syntax minus the method —
+	// Pattern is the path pattern, Go 1.22 ServeMux syntax minus the method --
 	// e.g. "/bestiary/{slug}/{$}".
 	Pattern string `json:"pattern"`
 	// Effect is the side-effect class. Defaults from Method unless overridden.
 	Effect Effect `json:"effect"`
 	// ExampleParams supplies a concrete value for each path wildcard, drawn
-	// from known-present seed data — e.g. {"slug": "goblin"}.
+	// from known-present seed data -- e.g. {"slug": "goblin"}.
 	ExampleParams map[string]string `json:"example_params,omitempty"`
 	// ExpectStatus, when non-zero, is the exact status the route must return.
 	// Zero means the default class: 200..399, never 5xx (and never 4xx).
@@ -64,14 +64,14 @@ type RouteSpec struct {
 	ContentType string `json:"content_type,omitempty"`
 	// AuthRequired marks a route that only responds successfully to an
 	// authenticated request. It is skipped in an unauthenticated run (no
-	// Cookie) and probed — expecting the default 2xx/3xx — only when a
+	// Cookie) and probed -- expecting the default 2xx/3xx -- only when a
 	// credential is supplied. Use for reads that 401/404 without a session.
 	AuthRequired bool `json:"auth_required,omitempty"`
 	// Labels are arbitrary key/value tags recorded on the route and carried
 	// through the manifest, uninterpreted by smoke. They let a second tool ride
 	// the same manifest instead of building its own route recorder: the consumer
 	// claims a key namespace (e.g. "sitemap") and reads its values back from the
-	// JSON. smoke never acts on them — Complete() and the gate ignore labels.
+	// JSON. smoke never acts on them -- Complete() and the gate ignore labels.
 	Labels map[string]string `json:"labels,omitempty"`
 }
 
@@ -137,7 +137,7 @@ func Labels(m map[string]string) Option {
 }
 
 // Body attaches a request body and content type for probing a write route.
-// Unlike Write(), it does not skip the route — the route is probed (POSTed)
+// Unlike Write(), it does not skip the route -- the route is probed (POSTed)
 // when the runner is given write access. Use for writes that have been brought
 // under smoke coverage with a known-valid payload against the fixture.
 func Body(contentType, body string) Option {
@@ -160,7 +160,7 @@ func Form(values url.Values) Option {
 func Write() Option {
 	return func(s *RouteSpec) {
 		s.Effect = Mutating
-		s.Skip = "write — smoke phase 2 (auth + payloads)"
+		s.Skip = "write -- smoke phase 2 (auth + payloads)"
 	}
 }
 
@@ -175,7 +175,7 @@ func defaultEffect(method string) Effect {
 }
 
 // paramPattern matches Go 1.22 ServeMux wildcards: {name} and {name...}. The
-// end-of-path anchor {$} is intentionally excluded — it is not a parameter.
+// end-of-path anchor {$} is intentionally excluded -- it is not a parameter.
 var paramPattern = regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)(\.\.\.)?\}`)
 
 // PathParams returns the wildcard names in a pattern, in order, without the

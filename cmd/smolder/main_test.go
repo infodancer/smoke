@@ -57,7 +57,7 @@ func TestRun(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// good manifest probes only /ok (200) and /redir (302) — both 2xx/3xx.
+	// good manifest probes only /ok (200) and /redir (302) -- both 2xx/3xx.
 	good := writeManifest(t, completeManifest)
 	if err := runCmd([]string{"--base", srv.URL, "--manifest", good}); err != nil {
 		t.Errorf("run against healthy server should pass: %v", err)

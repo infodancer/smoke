@@ -1,6 +1,6 @@
 package smoke
 
-// Incomplete returns the routes that lack smoke coverage — a registered route
+// Incomplete returns the routes that lack smoke coverage -- a registered route
 // with unfilled path params and no Skip. These are the gate's targets: in warn
 // mode they are printed as a prompt; in fail mode their presence fails CI.
 func (m Manifest) Incomplete() []ManifestRoute {

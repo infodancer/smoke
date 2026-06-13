@@ -15,10 +15,10 @@ import (
 type Target int
 
 const (
-	// Preview runs every route — mutations are acceptable because the target
+	// Preview runs every route -- mutations are acceptable because the target
 	// is an ephemeral per-PR database.
 	Preview Target = iota
-	// Live runs only ReadOnly routes — no mutations against production.
+	// Live runs only ReadOnly routes -- no mutations against production.
 	Live
 )
 
@@ -36,7 +36,7 @@ type RunOptions struct {
 	// UserAgent identifies the prober (default "smolder"); Live appends so the
 	// traffic is filterable from analytics.
 	UserAgent string
-	// Cookie, when set, is sent verbatim as the Cookie header on every probe —
+	// Cookie, when set, is sent verbatim as the Cookie header on every probe --
 	// the authenticated-session credential for write probes (e.g.
 	// "osg_session=<jwt>"). Acquired out of band (cmd smokeauth).
 	Cookie string
@@ -111,7 +111,7 @@ func (r Report) Counts() (pass, fail, skip int) {
 
 // Run probes every route in the manifest against opts.BaseURL and returns a
 // report. It never mutates against Live targets: only ReadOnly routes run.
-// Incomplete and explicitly-skipped routes are reported as Skipped, not Fail —
+// Incomplete and explicitly-skipped routes are reported as Skipped, not Fail --
 // coverage is the gate's job, not the runner's.
 func Run(ctx context.Context, m Manifest, opts RunOptions) (Report, error) {
 	if opts.BaseURL == "" {
@@ -215,7 +215,7 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 	if opts.Cookie != "" {
 		req.Header.Set("Cookie", opts.Cookie)
 	}
-	// Don't follow redirects automatically — a 3xx is itself a valid outcome
+	// Don't follow redirects automatically -- a 3xx is itself a valid outcome
 	// and following it can wander off-site or into auth flows.
 	resp, err := client.Do(req)
 	if err != nil {
@@ -239,7 +239,7 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 }
 
 // statusOK applies the expectation: an exact match when ExpectStatus is set,
-// else 2xx/3xx (served, or a redirect). Anything else — including 4xx — is a
+// else 2xx/3xx (served, or a redirect). Anything else -- including 4xx -- is a
 // failure by default: a 4xx on a route we deliberately probe means we did not
 // reach what we meant to test (a 404 is a dead route or a bad example; a 401/403
 // is an ungated probe of a gated route; a 405/400 is the wrong method or missing

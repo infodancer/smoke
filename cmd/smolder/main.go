@@ -1,6 +1,6 @@
 // Command smolder is the consumer half of the smoke system: it applies
-// sustained low heat — probing a running server's routes (smolder run) and
-// gating route coverage (smolder gate) — against a manifest produced by the
+// sustained low heat -- probing a running server's routes (smolder run) and
+// gating route coverage (smolder gate) -- against a manifest produced by the
 // smoke library.
 //
 //	smolder run  --base https://pr-42.oldschoolgamers.org [--manifest routes.json] [--target preview|live]
@@ -56,7 +56,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `smolder — route smoke testing
+	fmt.Fprint(os.Stderr, `smolder -- route smoke testing
 
 usage:
   smolder run  --base URL [--manifest SRC] [--target preview|live] [--concurrency N] [--timeout DUR]
