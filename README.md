@@ -89,6 +89,10 @@ smolder gate --manifest routes.json --mode fail   # warn | fail
   route forces a smoke spec.
 - **Manifest** — the JSON contract between the two halves: the union of every
   route and its completeness, stable-sorted so a committed copy diffs cleanly.
+- **Labels** — `Label(key, value)` records arbitrary tags on a route, carried
+  through the manifest untouched. smoke never interprets them; they let another
+  tool ride the same route manifest instead of building its own recorder (e.g. a
+  sitemap coverage gate reading the `sitemap` key). Labels don't affect coverage.
 
 ## License
 

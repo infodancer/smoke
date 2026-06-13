@@ -27,6 +27,7 @@ type ManifestRoute struct {
 	RequestBody   string            `json:"request_body,omitempty"`
 	ContentType   string            `json:"content_type,omitempty"`
 	AuthRequired  bool              `json:"auth_required,omitempty"`
+	Labels        map[string]string `json:"labels,omitempty"`
 	Complete      bool              `json:"complete"`
 }
 
@@ -49,6 +50,7 @@ func toManifestRoute(s RouteSpec) ManifestRoute {
 		RequestBody:   s.RequestBody,
 		ContentType:   s.ContentType,
 		AuthRequired:  s.AuthRequired,
+		Labels:        s.Labels,
 		Complete:      s.Complete(),
 	}
 }
@@ -66,6 +68,7 @@ func (r ManifestRoute) Spec() RouteSpec {
 		RequestBody:   r.RequestBody,
 		ContentType:   r.ContentType,
 		AuthRequired:  r.AuthRequired,
+		Labels:        r.Labels,
 	}
 }
 

@@ -67,6 +67,12 @@ type RouteSpec struct {
 	// Cookie) and probed — expecting the default 2xx/3xx — only when a
 	// credential is supplied. Use for reads that 401/404 without a session.
 	AuthRequired bool `json:"auth_required,omitempty"`
+	// Labels are arbitrary key/value tags recorded on the route and carried
+	// through the manifest, uninterpreted by smoke. They let a second tool ride
+	// the same manifest instead of building its own route recorder: the consumer
+	// claims a key namespace (e.g. "sitemap") and reads its values back from the
+	// JSON. smoke never acts on them — Complete() and the gate ignore labels.
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 // Option mutates a RouteSpec at registration time.
@@ -108,6 +114,27 @@ func Skip(reason string) Option { return func(s *RouteSpec) { s.Skip = reason } 
 // AuthRequired marks a read route that needs a session: skipped without a
 // credential, probed (expecting 2xx/3xx) when one is supplied.
 func AuthRequired() Option { return func(s *RouteSpec) { s.AuthRequired = true } }
+
+// Label records one arbitrary key/value tag on the route. smoke stores and
+// transports it untouched; a consumer of the manifest (e.g. a sitemap coverage
+// gate) interprets its own key namespace.
+func Label(key, value string) Option {
+	return func(s *RouteSpec) {
+		if s.Labels == nil {
+			s.Labels = map[string]string{}
+		}
+		s.Labels[key] = value
+	}
+}
+
+// Labels records several tags at once.
+func Labels(m map[string]string) Option {
+	return func(s *RouteSpec) {
+		for k, v := range m {
+			Label(k, v)(s)
+		}
+	}
+}
 
 // Body attaches a request body and content type for probing a write route.
 // Unlike Write(), it does not skip the route — the route is probed (POSTed)
