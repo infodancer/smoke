@@ -2,6 +2,7 @@ package smoke_test
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -292,5 +293,56 @@ func TestAuthRequiredGating(t *testing.T) {
 	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{BaseURL: srv.URL, Cookie: "s=1"})
 	if pass, _, _ := rep.Counts(); pass != 1 {
 		t.Errorf("authed run: pass=%d, want 1; %+v", pass, rep.Results)
+	}
+}
+
+func TestLabelsRoundTrip(t *testing.T) {
+	reg := smoke.New()
+	reg.AddPattern("GET /book/{slug}",
+		smoke.Example("slug", "23-years-on-fire"),
+		smoke.Label("sitemap", "catalog"))
+	reg.AddPattern("GET /login", smoke.Label("sitemap", "exclude:auth page"))
+	reg.AddPattern("GET /health") // no labels
+
+	// Labels are recorded on the spec, untouched by smoke.
+	book := findSpec(t, reg.Specs(), "/book/{slug}")
+	if got := book.Labels["sitemap"]; got != "catalog" {
+		t.Errorf("book sitemap label = %q, want catalog", got)
+	}
+
+	// Labels do not affect Complete() -- the labeled, exampled route is complete;
+	// the gate still ignores labels entirely.
+	if !book.Complete() {
+		t.Errorf("labeled, exampled route should be complete")
+	}
+
+	// Labels survive the manifest JSON round-trip.
+	data, err := json.Marshal(reg.Manifest())
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var back smoke.Manifest
+	if err := json.Unmarshal(data, &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	var login smoke.ManifestRoute
+	var health smoke.ManifestRoute
+	for _, r := range back.Routes {
+		switch r.Pattern {
+		case "/login":
+			login = r
+		case "/health":
+			health = r
+		}
+	}
+	if got := login.Labels["sitemap"]; got != "exclude:auth page" {
+		t.Errorf("login sitemap label after round-trip = %q, want exclude:auth page", got)
+	}
+	if health.Labels != nil {
+		t.Errorf("unlabeled route should have nil Labels, got %v", health.Labels)
+	}
+	// Spec() reconstruction carries labels back.
+	if got := login.Spec().Labels["sitemap"]; got != "exclude:auth page" {
+		t.Errorf("Spec() label = %q, want exclude:auth page", got)
 	}
 }
