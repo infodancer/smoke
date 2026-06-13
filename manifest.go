@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Manifest is the serialized route set — the contract between the smoke
+// Manifest is the serialized route set -- the contract between the smoke
 // library (producer) and the smolder CLI (consumer). It is the union of every
 // registered route and its completeness state, so the gate can flag
 // spec-less routes offline from the JSON alone.
@@ -72,7 +72,7 @@ func (r ManifestRoute) Spec() RouteSpec {
 	}
 }
 
-// EffectiveMethod is the method to probe with — GET when none was registered.
+// EffectiveMethod is the method to probe with -- GET when none was registered.
 func (r ManifestRoute) EffectiveMethod() string {
 	if r.Method == "" {
 		return "GET"

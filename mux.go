@@ -9,7 +9,7 @@ import "net/http"
 //
 // HandleFunc and Handle keep the stdlib signatures plus a variadic of smoke
 // Options, so existing registration calls compile unchanged and pick up specs
-// incrementally — a call with no options is recorded as an (incomplete unless
+// incrementally -- a call with no options is recorded as an (incomplete unless
 // parameterless) route, which is exactly what the gate flags.
 type Mux struct {
 	mux *http.ServeMux
@@ -46,7 +46,7 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // ServeMux returns the underlying *http.ServeMux, for mounting third-party
 // handlers that require the concrete type. Routes registered directly on it
-// are not recorded — declare a Registry.Subtree spec for those.
+// are not recorded -- declare a Registry.Subtree spec for those.
 func (m *Mux) ServeMux() *http.ServeMux { return m.mux }
 
 // Registry returns the spec registry, for manifest generation and the gate.

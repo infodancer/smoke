@@ -159,7 +159,7 @@ func TestRunAgainstServer(t *testing.T) {
 	reg.AddPattern("GET /boom")                                                 // 500 fails
 	reg.AddPattern("GET /bestiary/{slug}/{$}", smoke.Example("slug", "goblin")) // 200
 	reg.AddPattern("POST /api/write", smoke.Mutates())                          // skipped under Live
-	reg.AddPattern("GET /needsparam/{id}")                                      // incomplete → skipped
+	reg.AddPattern("GET /needsparam/{id}")                                      // incomplete -> skipped
 
 	// Use Run's own client (no redirect-following) so /redir is observed as a
 	// 302, which the default class accepts.
