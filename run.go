@@ -44,6 +44,14 @@ type RunOptions struct {
 	// reads-only run never fires a write even if a write route lacks a Skip.
 	// Requires Cookie for auth-gated writes.
 	IncludeWrites bool
+	// Headers, when set, is the security header expectation for this run (name
+	// to exact value), replacing the manifest's and the built-in baseline. The
+	// same form httpsec reports from HeaderConfig.Expected.
+	Headers map[string]string
+	// HeaderChecksOff skips the security header checks entirely. By default
+	// every probed response is held to the strict baseline; turn this off only
+	// for a target that has not adopted it yet.
+	HeaderChecksOff bool
 	// Client, when set, overrides the default HTTP client (tests inject one).
 	Client *http.Client
 }
@@ -147,6 +155,7 @@ func Run(ctx context.Context, m Manifest, opts RunOptions) (Report, error) {
 		}
 	}
 	base := trimTrailingSlash(opts.BaseURL)
+	hdrs := resolveHeaders(m, opts)
 
 	results := make([]Result, len(m.Routes))
 	sem := make(chan struct{}, conc)
@@ -157,7 +166,7 @@ func Run(ctx context.Context, m Manifest, opts RunOptions) (Report, error) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			results[i] = probe(ctx, client, base, ua, route, opts)
+			results[i] = probe(ctx, client, base, ua, route, opts, hdrs)
 		}(i, route)
 	}
 	wg.Wait()
@@ -171,7 +180,7 @@ func Run(ctx context.Context, m Manifest, opts RunOptions) (Report, error) {
 	return Report{Results: results}, nil
 }
 
-func probe(ctx context.Context, client *http.Client, base, ua string, route ManifestRoute, opts RunOptions) Result {
+func probe(ctx context.Context, client *http.Client, base, ua string, route ManifestRoute, opts RunOptions, hdrs headerExpectation) Result {
 	res := Result{Method: route.EffectiveMethod(), Pattern: route.Pattern}
 	mutating := effectFromString(route.Effect) != ReadOnly
 
@@ -232,6 +241,11 @@ func probe(ctx context.Context, client *http.Client, base, ua string, route Mani
 		} else {
 			res.Reason = fmt.Sprintf("status %d, want 2xx/3xx", resp.StatusCode)
 		}
+		return res
+	}
+	if problems := checkHeaders(resp.Header, hdrs, route); len(problems) > 0 {
+		res.Outcome = Fail
+		res.Reason = "headers: " + strings.Join(problems, "; ")
 		return res
 	}
 	res.Outcome = Pass

@@ -12,7 +12,11 @@ import (
 // registered route and its completeness state, so the gate can flag
 // spec-less routes offline from the JSON alone.
 type Manifest struct {
-	Routes []ManifestRoute `json:"routes"`
+	// Headers, when set, is the site-wide security header expectation, replacing
+	// the built-in baseline. Recorded in the committed manifest so a loosened
+	// default shows up in review. See Registry.ExpectHeaders.
+	Headers map[string]string `json:"expect_headers,omitempty"`
+	Routes  []ManifestRoute   `json:"routes"`
 }
 
 // ManifestRoute is a RouteSpec plus its computed Complete flag, flattened for
@@ -28,6 +32,7 @@ type ManifestRoute struct {
 	ContentType   string            `json:"content_type,omitempty"`
 	AuthRequired  bool              `json:"auth_required,omitempty"`
 	Labels        map[string]string `json:"labels,omitempty"`
+	ExpectHeaders map[string]string `json:"expect_headers,omitempty"`
 	Complete      bool              `json:"complete"`
 }
 
@@ -51,6 +56,7 @@ func toManifestRoute(s RouteSpec) ManifestRoute {
 		ContentType:   s.ContentType,
 		AuthRequired:  s.AuthRequired,
 		Labels:        s.Labels,
+		ExpectHeaders: s.ExpectHeaders,
 		Complete:      s.Complete(),
 	}
 }
@@ -69,6 +75,7 @@ func (r ManifestRoute) Spec() RouteSpec {
 		ContentType:   r.ContentType,
 		AuthRequired:  r.AuthRequired,
 		Labels:        r.Labels,
+		ExpectHeaders: r.ExpectHeaders,
 	}
 }
 
@@ -91,9 +98,10 @@ func (m Manifest) MarshalJSON() ([]byte, error) {
 		return routes[i].Method < routes[j].Method
 	})
 	type alias struct {
-		Routes []ManifestRoute `json:"routes"`
+		Headers map[string]string `json:"expect_headers,omitempty"`
+		Routes  []ManifestRoute   `json:"routes"`
 	}
-	return json.MarshalIndent(alias{Routes: routes}, "", "  ")
+	return json.MarshalIndent(alias{Headers: m.Headers, Routes: routes}, "", "  ")
 }
 
 // ParseManifest decodes a manifest from JSON.

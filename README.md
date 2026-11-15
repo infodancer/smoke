@@ -74,6 +74,28 @@ smolder run --base https://preview.example.com --include-writes --cookie 'sessio
 smolder gate --manifest routes.json --mode fail   # warn | fail
 ```
 
+## Security headers
+
+Every probed response is held to a strict baseline unless you say otherwise: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that denies the powerful browser features, `Strict-Transport-Security` (two years, `includeSubDomains`), and some `Content-Security-Policy` or `-Report-Only` header. Values are matched exactly, so a loosened policy fails. `smoke.BaselineHeaders()` returns the map.
+
+Expectations are name to exact value, the same form a header middleware can report, and can be changed at three levels:
+
+```go
+// One route differs: replaces only the named header, on this route.
+reg.AddPattern("GET /call", smoke.ExpectHeaders(map[string]string{
+	"Permissions-Policy": "camera=(self), microphone=(self)",
+}))
+
+// The whole site differs: replaces the baseline and is recorded in the manifest
+// as expect_headers, so a loosened default shows up in review. State every
+// header the site sends; one left out is not checked.
+reg.ExpectHeaders(siteHeaders)
+
+// A single run: smoke.RunOptions{Headers: siteHeaders}, which beats the manifest.
+```
+
+Precedence is the run option, then the manifest, then the baseline; a route's headers overlay whichever applies. `smoke.RunOptions{HeaderChecksOff: true}` or `smolder run --no-header-checks` turns the checks off for a target that has not adopted them.
+
 ## Model
 
 - **Effect** -- `ReadOnly` (default for GET/HEAD) or `Mutating`. The runner is

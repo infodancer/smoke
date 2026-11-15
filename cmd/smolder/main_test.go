@@ -59,12 +59,17 @@ func TestRun(t *testing.T) {
 
 	// good manifest probes only /ok (200) and /redir (302) -- both 2xx/3xx.
 	good := writeManifest(t, completeManifest)
-	if err := runCmd([]string{"--base", srv.URL, "--manifest", good}); err != nil {
+	// This server sends no security headers, so a default run fails on them...
+	if err := runCmd([]string{"--base", srv.URL, "--manifest", good}); err == nil {
+		t.Errorf("run must fail by default when security headers are missing")
+	}
+	// ...and passes only when the check is explicitly turned off.
+	if err := runCmd([]string{"--base", srv.URL, "--manifest", good, "--no-header-checks"}); err != nil {
 		t.Errorf("run against healthy server should pass: %v", err)
 	}
 
 	bad := writeManifest(t, `{"routes":[{"method":"GET","pattern":"/boom","effect":"read_only","complete":true}]}`)
-	if err := runCmd([]string{"--base", srv.URL, "--manifest", bad}); err == nil {
+	if err := runCmd([]string{"--base", srv.URL, "--manifest", bad, "--no-header-checks"}); err == nil {
 		t.Errorf("run should fail when a route 5xxs")
 	}
 }
