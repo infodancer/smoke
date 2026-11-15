@@ -1,14 +1,18 @@
 package smoke
 
-import "sync"
+import (
+	"maps"
+	"sync"
+)
 
 // Registry records the routes a host serves and their smoke specs. It is the
 // single source of truth from which the manifest is generated; integration
 // adapters (the stdlib Mux wrap, or future harvest adapters) feed it.
 type Registry struct {
-	mu     sync.Mutex
-	specs  []RouteSpec
-	prefix string
+	mu      sync.Mutex
+	specs   []RouteSpec
+	prefix  string
+	headers map[string]string
 }
 
 // New returns an empty registry.
@@ -59,5 +63,8 @@ func (r *Registry) Manifest() Manifest {
 	for i, s := range specs {
 		routes[i] = toManifestRoute(s)
 	}
-	return Manifest{Routes: routes}
+	r.mu.Lock()
+	headers := maps.Clone(r.headers)
+	r.mu.Unlock()
+	return Manifest{Headers: headers, Routes: routes}
 }

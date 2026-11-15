@@ -59,7 +59,7 @@ func usage() {
 	fmt.Fprint(os.Stderr, `smolder -- route smoke testing
 
 usage:
-  smolder run  --base URL [--manifest SRC] [--target preview|live] [--concurrency N] [--timeout DUR]
+  smolder run  --base URL [--manifest SRC] [--target preview|live] [--concurrency N] [--timeout DUR] [--no-header-checks]
   smolder gate --manifest SRC [--mode warn|fail]
 
 SRC is a file path or an http(s) URL. For "run", --manifest defaults to
@@ -76,6 +76,7 @@ func runCmd(args []string) error {
 	timeout := fs.Duration("timeout", 0, "per-request timeout (0 = default 15s)")
 	cookie := fs.String("cookie", "", "Cookie header for authenticated probes, e.g. 'osg_session=<jwt>'")
 	includeWrites := fs.Bool("include-writes", false, "also probe Mutating routes (requires --cookie for auth-gated writes)")
+	noHeaders := fs.Bool("no-header-checks", false, "skip the security header checks (by default every response must carry the strict baseline, or the manifest's expect_headers)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -96,12 +97,13 @@ func runCmd(args []string) error {
 	}
 
 	rep, err := smoke.Run(context.Background(), manifest, smoke.RunOptions{
-		BaseURL:       *base,
-		Target:        tgt,
-		Concurrency:   *concurrency,
-		Timeout:       *timeout,
-		Cookie:        *cookie,
-		IncludeWrites: *includeWrites,
+		BaseURL:         *base,
+		Target:          tgt,
+		Concurrency:     *concurrency,
+		Timeout:         *timeout,
+		Cookie:          *cookie,
+		IncludeWrites:   *includeWrites,
+		HeaderChecksOff: *noHeaders,
 	})
 	if err != nil {
 		return err

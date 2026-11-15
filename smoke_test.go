@@ -163,7 +163,7 @@ func TestRunAgainstServer(t *testing.T) {
 
 	// Use Run's own client (no redirect-following) so /redir is observed as a
 	// 302, which the default class accepts.
-	rep, err := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{
+	rep, err := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{HeaderChecksOff: true,
 		BaseURL: srv.URL,
 	})
 	if err != nil {
@@ -178,7 +178,7 @@ func TestRunAgainstServer(t *testing.T) {
 	}
 
 	// Live target skips the mutating route entirely.
-	repLive, err := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{
+	repLive, err := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{HeaderChecksOff: true,
 		BaseURL: srv.URL, Target: smoke.Live,
 	})
 	if err != nil {
@@ -213,13 +213,13 @@ func TestRunWriteProbing(t *testing.T) {
 	m := reg.Manifest()
 
 	// Default run: writes are not probed (reads-only), so the route is skipped.
-	rep, _ := smoke.Run(context.Background(), m, smoke.RunOptions{BaseURL: srv.URL})
+	rep, _ := smoke.Run(context.Background(), m, smoke.RunOptions{HeaderChecksOff: true, BaseURL: srv.URL})
 	if _, _, skip := rep.Counts(); skip != 1 {
 		t.Errorf("write should be skipped without IncludeWrites; results=%+v", rep.Results)
 	}
 
 	// With IncludeWrites + a cookie: probed, cookie + body + content-type sent.
-	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{
+	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{HeaderChecksOff: true,
 		BaseURL: srv.URL, IncludeWrites: true, Cookie: "osg_jwt=tok",
 	})
 	if pass, _, _ := rep.Counts(); pass != 1 {
@@ -240,7 +240,7 @@ func TestRunWriteProbing(t *testing.T) {
 	}
 
 	// Live target never probes a mutating route, even with IncludeWrites.
-	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{
+	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{HeaderChecksOff: true,
 		BaseURL: srv.URL, Target: smoke.Live, IncludeWrites: true, Cookie: "osg_jwt=tok",
 	})
 	if _, _, skip := rep.Counts(); skip != 1 {
@@ -285,12 +285,12 @@ func TestAuthRequiredGating(t *testing.T) {
 	m := reg.Manifest()
 
 	// No credential: the auth-required route is skipped, not failed on the 401.
-	rep, _ := smoke.Run(context.Background(), m, smoke.RunOptions{BaseURL: srv.URL})
+	rep, _ := smoke.Run(context.Background(), m, smoke.RunOptions{HeaderChecksOff: true, BaseURL: srv.URL})
 	if _, fail, skip := rep.Counts(); fail != 0 || skip != 1 {
 		t.Errorf("unauth run: fail=%d skip=%d, want 0/1; %+v", fail, skip, rep.Results)
 	}
 	// With a credential: probed and expected to succeed (2xx/3xx).
-	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{BaseURL: srv.URL, Cookie: "s=1"})
+	rep, _ = smoke.Run(context.Background(), m, smoke.RunOptions{HeaderChecksOff: true, BaseURL: srv.URL, Cookie: "s=1"})
 	if pass, _, _ := rep.Counts(); pass != 1 {
 		t.Errorf("authed run: pass=%d, want 1; %+v", pass, rep.Results)
 	}

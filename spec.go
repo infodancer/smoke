@@ -73,6 +73,10 @@ type RouteSpec struct {
 	// claims a key namespace (e.g. "sitemap") and reads its values back from the
 	// JSON. smoke never acts on them -- Complete() and the gate ignore labels.
 	Labels map[string]string `json:"labels,omitempty"`
+	// ExpectHeaders replaces the site's expected value for each named header on
+	// this route, name to exact value. Empty means the site expectation applies
+	// unchanged. See [ExpectHeaders].
+	ExpectHeaders map[string]string `json:"expect_headers,omitempty"`
 }
 
 // Option mutates a RouteSpec at registration time.
