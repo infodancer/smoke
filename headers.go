@@ -8,6 +8,16 @@ import (
 	"strings"
 )
 
+// The default, narrow security policy is expressed by two things together: this
+// package decides what a probe expects, and github.com/infodancer/web/httpsec
+// decides what a site sends. Neither controls the other, and they must stay in
+// sync; the site template runs smoke against a server built on httpsec's
+// defaults, so drift between them fails a test. Whether to add a restriction or
+// loosen one is decided from first principles (what the browser feature does,
+// who needs it, what abuse it allows), never because one side says so. A site is
+// expected to conform to the baseline unless a specific exception is made for
+// that site or route, with the reason written next to it.
+
 // baselineHeaders is the security header set smoke expects on every response
 // unless told otherwise. It is deliberately the strict default of a hardened
 // site, so a route that does not state an exception is held to it. Values are

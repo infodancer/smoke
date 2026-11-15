@@ -76,6 +76,8 @@ smolder gate --manifest routes.json --mode fail   # warn | fail
 
 ## Security headers
 
+The default, narrow security policy is expressed by smoke and `github.com/infodancer/web/httpsec` together: httpsec decides what a site sends, smoke decides what a probe expects. Neither controls the other and they must stay in sync (the site template runs smoke against a server built on httpsec's defaults, so drift fails a test). Adding a restriction or loosening one is decided from first principles, not by whichever side says so. A site conforms to the baseline unless a specific exception is made for that site or route, with the reason written next to it.
+
 Every probed response is held to a strict baseline unless you say otherwise: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, a `Permissions-Policy` that denies the powerful browser features, `Strict-Transport-Security` (two years, `includeSubDomains`), and some `Content-Security-Policy` or `-Report-Only` header. Values are matched exactly, so a loosened policy fails. `smoke.BaselineHeaders()` returns the map.
 
 Expectations are name to exact value, the same form a header middleware can report, and can be changed at three levels:
