@@ -5,6 +5,7 @@
 //
 //	smolder run  --base https://pr-42.oldschoolgamers.org [--manifest routes.json] [--target preview|live]
 //	smolder gate --manifest routes.json [--mode warn|fail]
+//	smolder inline --dir public [--allow GLOB]... [--mode warn|fail]
 //
 // The manifest source is a file path or an http(s) URL. For `run`, when
 // --manifest is omitted it is fetched from <base>/_smoke/manifest (the
@@ -41,6 +42,8 @@ func main() {
 		err = runCmd(os.Args[2:])
 	case "gate":
 		err = gateCmd(os.Args[2:])
+	case "inline":
+		err = inlineCmd(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -61,9 +64,16 @@ func usage() {
 usage:
   smolder run  --base URL [--manifest SRC] [--target preview|live] [--concurrency N] [--timeout DUR] [--no-header-checks]
   smolder gate --manifest SRC [--mode warn|fail]
+  smolder inline --dir DIR [--allow GLOB]... [--mode warn|fail] [--examples N]
 
 SRC is a file path or an http(s) URL. For "run", --manifest defaults to
 <base>/_smoke/manifest.
+
+"inline" scans a built tree of HTML (a static build, or pages saved from a
+running server) for what a strict Content-Security-Policy blocks: inline
+script, <style> elements, style attributes, event-handler attributes and
+javascript: URLs. --allow skips pages matching a path.Match glob, relative to
+DIR; use it for a page that cannot be made clean and say why where it is set.
 `)
 }
 
@@ -153,6 +163,72 @@ func gateCmd(args []string) error {
 	}
 	if *mode == "fail" {
 		return fmt.Errorf("%d uncovered route(s)", len(incomplete))
+	}
+	fmt.Fprintln(os.Stderr, "(warn mode: not failing)")
+	return nil
+}
+
+// globList is a repeatable string flag.
+type globList []string
+
+func (g *globList) String() string     { return fmt.Sprint([]string(*g)) }
+func (g *globList) Set(v string) error { *g = append(*g, v); return nil }
+
+func inlineCmd(args []string) error {
+	fs := newFlagSet("inline")
+	dir := fs.String("dir", "", "directory of built HTML to scan (required)")
+	mode := fs.String("mode", "warn", "warn (report, exit 0) or fail (exit non-zero)")
+	examples := fs.Int("examples", 3, "locations to print per kind (0 = all)")
+	var allow globList
+	fs.Var(&allow, "allow", "skip pages matching this path.Match glob relative to --dir (repeatable)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *dir == "" {
+		return fmt.Errorf("inline: --dir is required")
+	}
+	if *mode != "warn" && *mode != "fail" {
+		return fmt.Errorf("inline: --mode must be warn or fail, got %q", *mode)
+	}
+	rep, err := smoke.AuditInline(os.DirFS(*dir), smoke.InlineOptions{Allow: allow})
+	if err != nil {
+		return fmt.Errorf("inline: %w", err)
+	}
+	if rep.Pages == 0 {
+		return fmt.Errorf("inline: no HTML pages under %s", *dir)
+	}
+
+	counts := rep.Counts()
+	fmt.Printf("smolder inline: %d pages scanned", rep.Pages)
+	if len(rep.Skipped) > 0 {
+		fmt.Printf(", %d skipped by --allow", len(rep.Skipped))
+	}
+	fmt.Println()
+	if len(rep.Findings) == 0 {
+		fmt.Println("smolder inline: clean")
+		return nil
+	}
+	for _, k := range smoke.InlineKinds {
+		c, ok := counts[k]
+		if !ok {
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "%-24s %6d in %5d pages\n", k, c.Findings, c.Pages)
+		shown := 0
+		for _, f := range rep.Findings {
+			if f.Kind != k {
+				continue
+			}
+			if *examples > 0 && shown >= *examples {
+				fmt.Fprintf(os.Stderr, "    ... and %d more\n", c.Findings-shown)
+				break
+			}
+			fmt.Fprintf(os.Stderr, "    %s:%d  %s\n", f.Path, f.Line, f.Detail)
+			shown++
+		}
+	}
+	if *mode == "fail" {
+		return fmt.Errorf("%d finding(s) a strict CSP would block", len(rep.Findings))
 	}
 	fmt.Fprintln(os.Stderr, "(warn mode: not failing)")
 	return nil

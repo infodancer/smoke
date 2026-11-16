@@ -73,3 +73,61 @@ func TestRun(t *testing.T) {
 		t.Errorf("run should fail when a route 5xxs")
 	}
 }
+
+func writeSite(t *testing.T, files map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range files {
+		p := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+func TestInline(t *testing.T) {
+	clean := writeSite(t, map[string]string{"index.html": `<p>ok</p><script src="/a.js" defer></script>`})
+	dirty := writeSite(t, map[string]string{
+		"index.html":        `<p>ok</p>`,
+		"a/index.html":      `<div style="x:y">t</div>`,
+		"archive/page.html": `<script>x()</script>`,
+	})
+
+	if err := inlineCmd([]string{"--dir", clean, "--mode", "fail"}); err != nil {
+		t.Errorf("clean tree must pass fail mode: %v", err)
+	}
+	if err := inlineCmd([]string{"--dir", dirty, "--mode", "warn"}); err != nil {
+		t.Errorf("warn mode must not error: %v", err)
+	}
+	if err := inlineCmd([]string{"--dir", dirty, "--mode", "fail"}); err == nil {
+		t.Error("fail mode must error on findings")
+	}
+	// Allowing the page that has the script leaves only the style attribute.
+	if err := inlineCmd([]string{"--dir", dirty, "--mode", "fail", "--allow", "archive/*.html"}); err == nil {
+		t.Error("the style attribute outside the allowed page must still fail")
+	}
+	both := []string{"--dir", dirty, "--mode", "fail", "--allow", "archive/*.html", "--allow", "a/*.html"}
+	if err := inlineCmd(both); err != nil {
+		t.Errorf("every dirty page allowed, want pass: %v", err)
+	}
+	if err := inlineCmd([]string{"--mode", "fail"}); err == nil {
+		t.Error("--dir is required")
+	}
+	if err := inlineCmd([]string{"--dir", clean, "--mode", "bogus"}); err == nil {
+		t.Error("a bad --mode must be rejected")
+	}
+	if err := inlineCmd([]string{"--dir", filepath.Join(clean, "missing"), "--mode", "fail"}); err == nil {
+		t.Error("a missing directory must be an error, not a clean pass")
+	}
+	empty := writeSite(t, map[string]string{"notes.txt": "no pages here"})
+	if err := inlineCmd([]string{"--dir", empty, "--mode", "fail"}); err == nil {
+		t.Error("a tree with no HTML pages is a misconfigured path, not a clean build")
+	}
+	if err := inlineCmd([]string{"--dir", clean, "--allow", "["}); err == nil {
+		t.Error("a malformed --allow pattern must be rejected")
+	}
+}

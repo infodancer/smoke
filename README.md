@@ -12,7 +12,8 @@ Two pieces, one module, **no third-party dependencies** (standard library only):
   specs that records every route as it's registered (a drop-in `*http.ServeMux`
   wrapper, or a manual registry) and emits a JSON manifest.
 - **`smolder`** (`cmd/smolder`) -- the CLI. Probes a base URL (`smolder run`)
-  and gates coverage (`smolder gate`) from that manifest.
+  and gates coverage (`smolder gate`) from that manifest, and audits built
+  HTML for inline code a strict policy blocks (`smolder inline`).
 
 See [DESIGN.md](DESIGN.md) for the full rationale and data model.
 
@@ -97,6 +98,23 @@ reg.ExpectHeaders(siteHeaders)
 ```
 
 Precedence is the run option, then the manifest, then the baseline; a route's headers overlay whichever applies. `smoke.RunOptions{HeaderChecksOff: true}` or `smolder run --no-header-checks` turns the checks off for a target that has not adopted them.
+
+## Inline code audit
+
+The header baseline requires a Content-Security-Policy, and the strict default policy allows no inline script and no inline style. `smolder inline` finds what such a policy would block in a built tree of HTML, so a build can fail before the policy is enforced against it:
+
+```sh
+# Warn while a site is being cleaned up; fail in CI once it is clean.
+smolder inline --dir public --mode fail
+
+# A page that cannot be made clean (a saved third-party document) is skipped by
+# glob, relative to --dir. Say why wherever the flag is set.
+smolder inline --dir public --mode fail --allow 'archive/*/*.html'
+```
+
+It reports inline script blocks, `<style>` elements, `style` attributes, event-handler attributes (`onclick` and the rest) and `javascript:` URLs, with a count per kind and the first few locations (`--examples N`, 0 for all). Data blocks the browser never runs (JSON-LD, a `text/html` template, an import map) are not findings, and a tree with no HTML pages is an error rather than a clean pass. The same check is available to Go tests as `smoke.AuditInline(os.DirFS(dir), smoke.InlineOptions{})` and, for one document, `smoke.ScanInline`.
+
+It is a scanner, not a browser: it tokenises HTML (comments, raw-text script and style, quoted attributes) but builds no DOM and runs nothing, so markup that script creates at run time is not seen. A policy report-only header on a live site covers that case.
 
 ## Model
 
