@@ -2,6 +2,7 @@ package smoke_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -216,5 +217,104 @@ func TestHeaderNamesAreCaseInsensitive(t *testing.T) {
 	reg.ExpectHeaders(map[string]string{"x-frame-options": "SAMEORIGIN"})
 	if res := runOne(t, srv, reg.Manifest(), smoke.RunOptions{}); res.Outcome != smoke.Pass {
 		t.Errorf("lowercase name: %v %s", res.Outcome, res.Reason)
+	}
+}
+
+// withoutCSP is secureHeaders as a document the CSP does not guard would send
+// them: everything but the policy.
+func withoutCSP() map[string]string {
+	h := secureHeaders()
+	delete(h, "Content-Security-Policy")
+	return h
+}
+
+func TestNoCSPRouteMayOmitThePolicy(t *testing.T) {
+	srv := serverSending(t, map[string]map[string]string{"/feed": withoutCSP(), "/page": withoutCSP()})
+	reg := smoke.New()
+	reg.AddPattern("GET /feed", smoke.NoCSP("a feed with no markup for a policy to guard"))
+	reg.AddPattern("GET /page")
+	rep, err := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{BaseURL: srv.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rep.Results {
+		switch r.Pattern {
+		case "/feed":
+			if r.Outcome != smoke.Pass {
+				t.Errorf("/feed declared no CSP and must pass: %v %s", r.Outcome, r.Reason)
+			}
+		case "/page":
+			if r.Outcome != smoke.Fail || !strings.Contains(r.Reason, "Content-Security-Policy") {
+				t.Errorf("/page never declared the exception and must fail on the CSP: %v %s", r.Outcome, r.Reason)
+			}
+		}
+	}
+}
+
+// The exception is for the policy alone. Every other header is still held to
+// the baseline on that route.
+func TestNoCSPRouteIsStillHeldToTheOtherHeaders(t *testing.T) {
+	bad := withoutCSP()
+	delete(bad, "X-Content-Type-Options")
+	srv := serverSending(t, map[string]map[string]string{"/feed": bad})
+	reg := smoke.New()
+	reg.AddPattern("GET /feed", smoke.NoCSP("a feed"))
+	rep, _ := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{BaseURL: srv.URL})
+	if res := rep.Results[0]; res.Outcome != smoke.Fail || !strings.Contains(res.Reason, "X-Content-Type-Options") {
+		t.Errorf("missing nosniff must still fail: %v %s", res.Outcome, res.Reason)
+	}
+}
+
+// A route that is allowed to omit the policy and sends one anyway is fine.
+func TestNoCSPRouteMaySendThePolicy(t *testing.T) {
+	srv := serverSending(t, map[string]map[string]string{"/feed": secureHeaders()})
+	reg := smoke.New()
+	reg.AddPattern("GET /feed", smoke.NoCSP("a feed"))
+	rep, _ := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{BaseURL: srv.URL})
+	if res := rep.Results[0]; res.Outcome != smoke.Pass {
+		t.Errorf("%v %s", res.Outcome, res.Reason)
+	}
+}
+
+// A site that states its headers in full, CSP included, can still exempt a route.
+func TestNoCSPRouteOverridesASiteLevelPolicy(t *testing.T) {
+	site := secureHeaders()
+	srv := serverSending(t, map[string]map[string]string{"/feed": withoutCSP()})
+	reg := smoke.New()
+	reg.ExpectHeaders(site)
+	reg.AddPattern("GET /feed", smoke.NoCSP("a feed"))
+	rep, _ := smoke.Run(context.Background(), reg.Manifest(), smoke.RunOptions{BaseURL: srv.URL})
+	if res := rep.Results[0]; res.Outcome != smoke.Pass {
+		t.Errorf("%v %s", res.Outcome, res.Reason)
+	}
+}
+
+// The reason is part of the manifest, so a reviewer sees each exception and why.
+func TestNoCSPReasonIsRecordedInTheManifest(t *testing.T) {
+	reg := smoke.New()
+	reg.AddPattern("GET /feed", smoke.NoCSP("a feed"))
+	m := reg.Manifest()
+	if got := m.Routes[0].NoCSP; got != "a feed" {
+		t.Errorf("manifest NoCSP = %q", got)
+	}
+	b, err := json.Marshal(m)
+	if err != nil || !strings.Contains(string(b), `"no_csp":"a feed"`) {
+		t.Errorf("json = %s, err %v", b, err)
+	}
+	if got := m.Routes[0].Spec().NoCSP; got != "a feed" {
+		t.Errorf("Spec() dropped NoCSP: %q", got)
+	}
+}
+
+func TestNoCSPNeedsAReason(t *testing.T) {
+	for _, reason := range []string{"", "   "} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("NoCSP(%q) did not panic", reason)
+				}
+			}()
+			smoke.NoCSP(reason)(&smoke.RouteSpec{})
+		}()
 	}
 }
