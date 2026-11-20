@@ -52,6 +52,21 @@ func ExpectHeaders(m map[string]string) Option {
 	}
 }
 
+// NoCSP is a route option: the route may send no Content-Security-Policy, for a
+// response the policy has nothing to guard, such as a feed or a sitemap that a
+// browser draws with its own viewer. The reason is required and is recorded in
+// the manifest beside the route, so a reviewer sees each exception and why. It
+// waives the policy alone; every other header is held to the site expectation,
+// and a route that sends a policy anyway still passes. It panics on a blank
+// reason, at registration time.
+func NoCSP(reason string) Option {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		panic("smoke: NoCSP needs a reason")
+	}
+	return func(s *RouteSpec) { s.NoCSP = reason }
+}
+
 // ExpectHeaders sets the site-wide expectation recorded in the manifest. It
 // replaces the built-in baseline wholesale for this site, so state every header
 // the site sends; a header left out is then not checked. Use it for a site whose
@@ -132,6 +147,10 @@ func checkHeaders(got http.Header, site headerExpectation, route ManifestRoute) 
 	}
 	want := maps.Clone(site.values)
 	maps.Copy(want, route.ExpectHeaders)
+	if route.NoCSP != "" {
+		delete(want, "Content-Security-Policy")
+		delete(want, "Content-Security-Policy-Report-Only")
+	}
 	var problems []string
 	for name, value := range want {
 		have := strings.TrimSpace(got.Get(name))
@@ -142,7 +161,7 @@ func checkHeaders(got http.Header, site headerExpectation, route ManifestRoute) 
 			problems = append(problems, fmt.Sprintf("%s = %q, want %q", name, have, value))
 		}
 	}
-	if site.requireCSP && got.Get("Content-Security-Policy") == "" && got.Get("Content-Security-Policy-Report-Only") == "" {
+	if site.requireCSP && route.NoCSP == "" && got.Get("Content-Security-Policy") == "" && got.Get("Content-Security-Policy-Report-Only") == "" {
 		problems = append(problems, "Content-Security-Policy missing (or -Report-Only)")
 	}
 	sort.Strings(problems)

@@ -33,6 +33,7 @@ type ManifestRoute struct {
 	AuthRequired  bool              `json:"auth_required,omitempty"`
 	Labels        map[string]string `json:"labels,omitempty"`
 	ExpectHeaders map[string]string `json:"expect_headers,omitempty"`
+	NoCSP         string            `json:"no_csp,omitempty"`
 	Complete      bool              `json:"complete"`
 }
 
@@ -57,6 +58,7 @@ func toManifestRoute(s RouteSpec) ManifestRoute {
 		AuthRequired:  s.AuthRequired,
 		Labels:        s.Labels,
 		ExpectHeaders: s.ExpectHeaders,
+		NoCSP:         s.NoCSP,
 		Complete:      s.Complete(),
 	}
 }
@@ -76,6 +78,7 @@ func (r ManifestRoute) Spec() RouteSpec {
 		AuthRequired:  r.AuthRequired,
 		Labels:        r.Labels,
 		ExpectHeaders: r.ExpectHeaders,
+		NoCSP:         r.NoCSP,
 	}
 }
 

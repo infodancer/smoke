@@ -97,6 +97,14 @@ reg.ExpectHeaders(siteHeaders)
 // A single run: smoke.RunOptions{Headers: siteHeaders}, which beats the manifest.
 ```
 
+A route the policy has nothing to guard (a feed, or a sitemap, which a browser draws with its own viewer) may be exempted from the CSP requirement, with the reason written beside it:
+
+```go
+reg.AddPattern("GET /feed.xml", smoke.NoCSP("an XML feed with no markup for a policy to guard"))
+```
+
+The reason is required and is recorded in the manifest as `no_csp`, so a reviewer sees each exception. It waives the policy only: every other header is still checked on that route, and a route that sends a policy anyway still passes.
+
 Precedence is the run option, then the manifest, then the baseline; a route's headers overlay whichever applies. `smoke.RunOptions{HeaderChecksOff: true}` or `smolder run --no-header-checks` turns the checks off for a target that has not adopted them.
 
 ## Inline code audit

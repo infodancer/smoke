@@ -77,6 +77,9 @@ type RouteSpec struct {
 	// this route, name to exact value. Empty means the site expectation applies
 	// unchanged. See [ExpectHeaders].
 	ExpectHeaders map[string]string `json:"expect_headers,omitempty"`
+	// NoCSP is the reason this route may send no Content-Security-Policy; empty
+	// means it must. See [NoCSP].
+	NoCSP string `json:"no_csp,omitempty"`
 }
 
 // Option mutates a RouteSpec at registration time.
